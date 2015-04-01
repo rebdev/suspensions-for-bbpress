@@ -1,3 +1,3 @@
 # rabbp-suspension
 
-Adds a 'suspended' role that denies commenting ability within bbPress
+Adds a bbPress 'suspended' role that denies commenting ability and is removed with wp-cron after suspend period expires
