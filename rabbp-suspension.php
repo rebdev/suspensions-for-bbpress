@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * Plugin Name: RA BBPress Suspension
  * Description: Adds a 'suspended' role that denies commenting ability within BBPress
  * for a specified amount of time.
- * Version: 1.3
+ * Version: 1.4
  * Author: rebdev
  * GitHub Plugin URI: https://github.com/rebdev/rabbp-suspension
  */
