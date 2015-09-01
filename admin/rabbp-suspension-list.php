@@ -350,17 +350,24 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
 
         /*
          * Role filter
-         * TODO: This is so hacky.
          */
         // Get status param from the URL if any
         $status = isset( $_REQUEST['status'] ) ? $_REQUEST['status'] : '';
         // Do the query
 		global $wpdb;
 		$table_name = $wpdb->prefix . "suspensions";
+		
         if ( isset( $_REQUEST['status'] ) ) {
-		    $data = $wpdb->get_results( sprintf("SELECT * FROM %s WHERE status = '%s'", mysql_real_escape_string( $table_name ), mysql_real_escape_string( $status ), OBJECT ) );
+            $data = $wpdb->get_results( $wpdb->prepare( "SELECT * 
+                                                FROM $table_name
+                                                WHERE status = '%s'", $status), OBJECT);
+
         } else {
             $data = $wpdb->get_results( sprintf("SELECT * FROM %s", mysql_real_escape_string( $table_name ), OBJECT ) );
+
+            $data = $wpdb->get_results( $wpdb->prepare( "SELECT * 
+                                                FROM $table_name"), OBJECT);
+
         }
         
 
