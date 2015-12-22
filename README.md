@@ -1,4 +1,4 @@
-=== bbPress Suspension ===
+=== bbPress Suspensions ===
 
 Contributors: superbecc
 Tags: bbpress, suspending, moderation
