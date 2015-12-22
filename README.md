@@ -1,4 +1,5 @@
 === bbPress Suspension ===
+
 Contributors: superbecc
 Tags: bbpress, suspending, moderation
 Requires at least: 3.0.1
@@ -20,4 +21,3 @@ Settings allow the admin to specify a default suspension period, though this can
 1. Upload the plugin files to the `/wp-content/plugins/plugin-name` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Under the 'Suspensions -> Options' menu, specify a default suspension period and a message to appear on the page informing any suspended user that they're temporarily unable to comment.
-4. Suspend a user by going to'Suspensions -> Add New'.
