@@ -8,11 +8,11 @@ Stable tag: 4.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Adds a bbPress role 'suspended' that denies commenting ability and can be assigned to a user for a specified period of time to prevent commenting on bbPress forums.
+Adds a bbPress 'suspended' role that denies commenting ability and can be assigned to a user for a specified period of time to prevent commenting on bbPress forums.
 
 == Description ==
 
-Adds a bbPress role 'suspended' that denies commenting ability on bbPress forums. When the admin creates a suspension, this role is assigned to the targeted user to temporarily silence them; the role is removed with wp-cron after their suspension period expires.
+Adds a bbPress 'suspended' role that denies commenting ability on bbPress forums. When the admin creates a suspension, this role is assigned to the targeted user to temporarily silence them; the role is removed with wp-cron after their suspension period expires.
 
 Settings allow the admin to specify a default suspension period, though this can also be altered for any individual suspension.
 
