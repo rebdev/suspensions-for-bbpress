@@ -479,5 +479,4 @@ function rabbp_suspension_render_list_page(){
 }
 
 
-
 ?>
