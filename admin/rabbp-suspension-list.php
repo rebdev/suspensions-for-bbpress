@@ -361,13 +361,8 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
             $data = $wpdb->get_results( $wpdb->prepare( "SELECT * 
                                                 FROM $table_name
                                                 WHERE status = '%s'", $status), OBJECT);
-
         } else {
-            $data = $wpdb->get_results( sprintf("SELECT * FROM %s", mysql_real_escape_string( $table_name ), OBJECT ) );
-
-            $data = $wpdb->get_results( $wpdb->prepare( "SELECT * 
-                                                FROM $table_name"), OBJECT);
-
+            $data = $wpdb->get_results( sprintf("SELECT * FROM %s", $table_name) );
         }
         
 
@@ -477,6 +472,7 @@ function rabbp_suspension_render_list_page(){
     </div>
     <?php
 }
+
 
 
 ?>
