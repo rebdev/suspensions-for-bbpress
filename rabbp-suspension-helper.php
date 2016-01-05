@@ -151,11 +151,6 @@ class RabbpSuspensionHelper {
 			$errors['name'] = "<p>Invalid time.</p>";
 		}
 
-		$myHelper = new RabbpSuspensionHelper();
-		if ( $myHelper->rolesForUserIncludes( $data['user_id'], "bbp_suspended" ) ) {
-			$errors['user_id'] = "<p>That user is already suspended. Try editing their existing suspension.</p>";
-		}
-
 		return $errors;
 	}
 
@@ -430,9 +425,6 @@ class RabbpSuspensionHelper {
 		}
 	}
 
-	
-
 }
-
 
 ?>
