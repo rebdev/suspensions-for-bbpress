@@ -17,9 +17,7 @@ function rabbp_suspension_render_single_page() {
 	global $format_date;
 	$format_date = 'Y/m/d h:i';
 
-
-	// Admin has saved a default suspend time
-
+	// Check if admin has set a default suspend time, else use our default of 7 days.
 	if ( get_option('default_suspend_time') ) {
 		$default_suspend_time = get_option('default_suspend_time');
 	} else {
@@ -27,13 +25,20 @@ function rabbp_suspension_render_single_page() {
 	}
 
 
-	// Edit form!
+
+	// Do form submission
 
 	if ( isset($_POST['submit']) ) {
 
 		// Read input data for saving
 
-		$suspension_id = ( isset($_POST['id']) ? stripslashes($_POST['id']) : null );
+		if ( isset($_POST['id']) ) {
+			$suspension_id = $_POST['id'];
+		} else {
+			$suspension_id = null;
+		}
+
+
 		$name = ( isset($_POST['name']) ? stripslashes($_POST['name']) : "" );
 		$user_id = ( isset($_POST['user_id']) ? stripslashes($_POST['user_id']) : null );
 		$length_of_suspension_in_days = ( isset($_POST['length_of_suspension_in_days']) ? stripslashes($_POST['length_of_suspension_in_days']) : $default_suspend_time );
@@ -88,7 +93,6 @@ function rabbp_suspension_render_single_page() {
 		} else {
 			$where = array('id'	=> $suspension_id);
 		}
-
 		
 		// Build a message explaining what's wrong.
 		$formErrors = $myHelper->checkFormDataForErrors($data);
@@ -97,56 +101,42 @@ function rabbp_suspension_render_single_page() {
 			$formErrorsString .= $formError;
 		}
 
+
 		// Check for validity of what's entered in the form and process if appropriate, otherwise show errors.
+		
 		if ( count($formErrors) == 0 ) { 
 
-			// New or existing suspension?
+			// Are we working on a new or existing suspension?
 			if( !isset($suspension_id) || ( isset($suspension_id) && ($suspension_id == null) && ($suspension_id == 0) ) ) {
 				
-				// Adding new suspension
-								
-				if ( $myHelper->rolesForUserIncludes( $data['user_id'], "bbp_suspended" ) ) {					
-				
-					// User is already suspended!
-					$message = "<div id=\"message\" class=\"error\"><p>That user's already suspended. You can't suspend them again yet!</p></div>";
-				
+				// It's a new one.
+	
+				if ( $wpdb->insert($table_name, $data, $format) === FALSE ) {  	// Failure returns false. (Success returns 0.)
+					// If failed to add suspension to database, give an error message.
+					$message = "<div id=\"message\" class=\"error\"><h3>Error creating suspension..</h3>" . $formErrorsString . "</div>";
 				} else {
-
-					if ( $wpdb->insert($table_name, $data, $format) === FALSE ) {  	// Failure returns false. (Success returns 0.)
-						// Problemo...
-						$message = "<div id=\"message\" class=\"error\"><h3>Error creating suspension<h3>" . $formErrorsString . "</div>";	
-
-					} else {
-						// Success!
-
-						// Trigger the action that handles behind-the-scenes changes
-						$new_suspension_id = intval( $wpdb->insert_id );
-						do_action('rabbp_suspension_form_submitted', $new_suspension_id, $data );	
-						
-						// User message
-						$message = "<div id=\"message\" class=\"updated below-h2\"><p>Suspension created.</p></div>";
-					}
+					// Success!
+					// Trigger the action that handles behind-the-scenes changes
+					$new_suspension_id = intval( $wpdb->insert_id );
+					do_action('rabbp_suspension_form_submitted', $new_suspension_id, $data );	
+					
+					// User message
+					$message = "<div id=\"message\" class=\"updated below-h2\"><p>Suspension created.</p></div>";
 				}
+
 
 			} else {
 
-				// Editing existing suspension.
+				// Try to edit an existing suspension.
 				
-				if ( $wpdb->update( $table_name, $data, $where, $format) === FALSE ) {   					// Failure returns false.
-
-					// Problemo...
-					$message = "<div id=\"message\" class=\"error\"><h3>Error creating suspension<h3>" . $formErrorsString . "</div>";
-
+				if ( $wpdb->update( $table_name, $data, $where, $format) === FALSE ) {   // Failure returns false.
+					$message = "<div id=\"message\" class=\"error\"><h3>Error creating suspension.</h3>" . $formErrorsString . "</div>";
 				} else {
-
 					// Success!
-
 					// Trigger the action that handles behind-the-scenes changes
 					do_action('rabbp_suspension_form_submitted', $suspension_id, $data );	
-
 					// User message
 					$message = "<div id=\"message\" class=\"updated below-h2\"><p>Suspension updated.</p></div>";
-
 				}
 			}
 
@@ -163,7 +153,7 @@ function rabbp_suspension_render_single_page() {
 	}
 
 
-	/* Display form! */
+	/* Display the form */
 
 	if ( isset( $_GET['action'] ) && !empty( $_GET['action'] ) ) {
 		$action = $_GET['action']; 
@@ -180,14 +170,13 @@ function rabbp_suspension_render_single_page() {
 	}
 
 	/* Get suspension from database (returns no result if it's a new suspension being created) */
-	
 	$suspension = $myHelper->prepare_suspension($suspension_id);
 
 	// Prepare field values to show in form
 	$id = ( isset($suspension->id) ? $suspension->id : "" );
 	$name = ( isset($suspension->name) ? $suspension->name : "" );
 	$user_id = ( isset($suspension->user_id) ? $suspension->user_id : "" );
-	$length_of_suspension_in_days = ( isset($suspension->length_of_suspension_in_days) ? $suspension->length_of_suspension_in_days : "7" );
+	$length_of_suspension_in_days = ( isset($suspension->length_of_suspension_in_days) ? $suspension->length_of_suspension_in_days : $default_suspend_time );
 	$time = ( isset($suspension->time) ? $suspension->time : current_time($format_date) );
 	$reason = ( isset($suspension->reason) ? $suspension->reason : "" );
 	$ordinary_bbp_roles = ( isset($suspension->ordinary_bbp_roles) ? $suspension->ordinary_bbp_roles : "" );
