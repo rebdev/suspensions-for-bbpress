@@ -151,8 +151,12 @@ class RabbpSuspensionHelper {
 			$errors['name'] = "<p>Invalid time.</p>";
 		}
 
-		return $errors;
+		$myHelper = new RabbpSuspensionHelper();
+		if ( $myHelper->rolesForUserIncludes( $data['user_id'], "bbp_suspended" ) ) {
+			$errors['user_id'] = "<p>That user is already suspended. Try editing their existing suspension.</p>";
+		}
 
+		return $errors;
 	}
 
 
@@ -163,19 +167,19 @@ class RabbpSuspensionHelper {
 	 * @returns boolean true or false according to whether or not the user has the role
 	 */
 	function rolesForUserIncludes( $user_id, $role_name ) {
-		//global $wpdb;
-		//$table_name = $wpdb->prefix . "suspensions";
-
 		$user = get_user_by('id', $user_id);
 		$users_current_roles = $user->roles;
 
-		if ( in_array( $role_name, $users_current_roles ) ) {
-			return true;
-		} else {
-			return false;
+		foreach($users_current_roles as $role) {
+			if ($role == $role_name) {
+				return true;
+			}
 		}
-
+		// Return false as no match happened in the for loop
+		return false;
 	}
+
+
 
 
 	/* 
@@ -197,10 +201,11 @@ class RabbpSuspensionHelper {
 		}
 
 		$current_bbp_roles_as_string = implode(",", $current_bbp_roles );	
-
 		return $current_bbp_roles_as_string;
-
 	}
+
+
+
 
 
 	/*
