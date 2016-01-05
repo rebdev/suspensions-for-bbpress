@@ -12,10 +12,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 function rabbp_suspension_render_single_page() {
 
+
 	$myHelper = new RabbpSuspensionHelper();
+
 
 	global $format_date;
 	$format_date = 'Y/m/d h:i';
+
 
 	// Check if admin has set a default suspend time, else use our default of 7 days.
 	if ( get_option('default_suspend_time') ) {
@@ -32,11 +35,20 @@ function rabbp_suspension_render_single_page() {
 
 		// Read input data for saving
 
+		// Suspension ID
 		if ( isset($_POST['id']) ) {
-			$suspension_id = $_POST['id'];
+			// Only accept an int
+			$safe_id = intval($_POST['id']);
+			if (!$safe_id) {
+				$suspension_id = null;
+			} else {
+				$suspension_id = $safe_id;
+			}
 		} else {
 			$suspension_id = null;
 		}
+
+		// User name
 
 
 		$name = ( isset($_POST['name']) ? stripslashes($_POST['name']) : "" );
@@ -54,6 +66,7 @@ function rabbp_suspension_render_single_page() {
 		} else {
 			$time = current_time('mysql');
 		}
+
 		$status = ( isset($_POST['status']) ? stripslashes($_POST['status']) : "ACTIVE" ); // Status is 'ACTIVE' by default
 		$reason = ( isset($_POST['reason']) ? stripslashes($_POST['reason']) : "" );
 		$suspended_until = $myHelper->calculate_end_date( $time, $length_of_suspension_in_days);
@@ -103,17 +116,28 @@ function rabbp_suspension_render_single_page() {
 
 
 		// Check for validity of what's entered in the form and process if appropriate, otherwise show errors.
-		
-		if ( count($formErrors) == 0 ) { 
+		// 
+		// NB: At this point that we haven't yet checked if the user is already suspended. This we'll check after verifying if user is
+		//  creating or updating, as user being suspended already is not a problem when editing, only when creating.
+		// 
+		if ( count($formErrors) == 0 ) {
 
 			// Are we working on a new or existing suspension?
+			// 
 			if( !isset($suspension_id) || ( isset($suspension_id) && ($suspension_id == null) && ($suspension_id == 0) ) ) {
-				
-				// It's a new one.
+			
+				// Right, we're trying to add a new suspension.
 	
+				// First of all, check if user is already suspended and add an error message if so, because you shouldn't be able to suspend someone twice.
+				$myHelper = new RabbpSuspensionHelper();
+				if ( $myHelper->rolesForUserIncludes( $data['user_id'], "bbp_suspended" ) ) {
+					$formErrorsString .= "<p>That user is already suspended. Try editing their existing suspension.</p>";
+				}
+
+
 				if ( $wpdb->insert($table_name, $data, $format) === FALSE ) {  	// Failure returns false. (Success returns 0.)
 					// If failed to add suspension to database, give an error message.
-					$message = "<div id=\"message\" class=\"error\"><h3>Error creating suspension..</h3>" . $formErrorsString . "</div>";
+					$message = "<div id=\"message\" class=\"error\">" . $formErrorsString . "</div>";
 				} else {
 					// Success!
 					// Trigger the action that handles behind-the-scenes changes
@@ -130,7 +154,7 @@ function rabbp_suspension_render_single_page() {
 				// Try to edit an existing suspension.
 				
 				if ( $wpdb->update( $table_name, $data, $where, $format) === FALSE ) {   // Failure returns false.
-					$message = "<div id=\"message\" class=\"error\"><h3>Error creating suspension.</h3>" . $formErrorsString . "</div>";
+					$message = "<div id=\"message\" class=\"error\">" . $formErrorsString . "</div>";
 				} else {
 					// Success!
 					// Trigger the action that handles behind-the-scenes changes
