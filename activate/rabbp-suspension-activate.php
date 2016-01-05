@@ -15,9 +15,14 @@ global $wpdb;
 global $table_name;
 $table_name = $wpdb->prefix . "suspensions"; 
 
+# Database version installed already
+global $installed_ver;
+$installed_ver = get_option('rabbp_suspension_db_version');
+
 # Database Version Number option. Directs whether the database is updated or left alone.
 global $rabbp_suspension_db_version;
-$rabbp_suspension_db_version = '1.6';
+$rabbp_suspension_db_version = '1.7';
+
 
 
 
@@ -42,6 +47,7 @@ register_uninstall_hook( __FILE__, 'rabbp_suspension_on_uninstall');
 
 
 
+
 /**
  * When plugin is deactivated, pause the wp-cron job.
  * 
@@ -59,78 +65,61 @@ register_deactivation_hook( __FILE__, 'rabbp_suspension_on_deactivation');
 /**
  * Set up database.
  */
-function rabbp_suspension_setup_database() {
+function rabbp_suspension_setup_database_table() {
 
 	global 	$wpdb,
 			$rabbp_suspension_db_version,
-			$table_name;
-
-   	# Get the character set and collation for the database so we can set
-   	#  the table to the same. Setting the default character set and collation
-   	#  for the table means we won't get characters being converted to just ?'s
-   	#  when saved in our table.
-   	$charset_collate = $wpdb->get_charset_collate();
-
-	$sql = "
-		CREATE TABLE $table_name (
-			id mediumint(9) NOT NULL AUTO_INCREMENT,
-			name tinytext NOT NULL,	
-			user_id mediumint(9) NOT NULL UNIQUE,		
-			time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-			suspended_until datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,	
-			ordinary_bbp_roles text NOT NULL,		
-			reason text NOT NULL,
-			status text DEFAULT 'active',			
-			length_of_suspension_in_days mediumint(9),
-			created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			last_modified DATETIME DEFAULT 0,
-			UNIQUE KEY id (id)
-		);
-	";
-
-	# Run the query that creates the table
-	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-	dbDelta( $sql );
-
-
-	# Record the database version in the wp_options table
-	add_option( 'rabbp_suspension_db_version', $rabbp_suspension_db_version );
+			$table_name,
+			$installed_ver;
 
 
 
-	// Create a trigger associated with this table to update createDate upon row insertion and lastModified whenever updated.
-	
-	$trigger_name = $table_name . "_create_time_trigger";
-	$trigger_sql = "CREATE TRIGGER $trigger_name 
-		BEFORE UPDATE ON $table_name
-		FOR EACH ROW BEGIN
-			SET NEW.last_modified = now();
-		END
-	";
-	$wpdb->query($trigger_sql);
+	if( ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) || ($installed_ver !== $rabbp_suspension_db_version) ) {
 
-	$installed_ver = get_option( "rabbp_suspension_db_version" );
+	   	// Get the character set and collation for the database so we can set the table to the same. Setting the default character set and collation
+	   	// for the table means we won't get characters being converted to just ?'s when saved in our table.
+	   	$charset_collate = $wpdb->get_charset_collate();
 
-	if ( $installed_ver != $rabbp_suspension_db_version ) {
-		#...
-		# Update the database version in the wp_options table
-		update_option( "rabbp_suspension_db_version", $rabbp_suspension_db_version );
+
+	   	// Build and run the query that creates the table
+		$sql = "CREATE TABLE $table_name (
+				id mediumint(9) NOT NULL AUTO_INCREMENT,
+				name tinytext NOT NULL,	
+				user_id mediumint(9) NOT NULL,		
+				time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+				suspended_until datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,	
+				ordinary_bbp_roles text NOT NULL,		
+				reason text NOT NULL,
+				status varchar(30) DEFAULT 'active' NOT NULL,			
+				length_of_suspension_in_days mediumint(9),
+				created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				last_modified DATETIME DEFAULT 0,
+				UNIQUE KEY id (id)
+		) $charset_collate;";
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		dbDelta( $sql );
+
+
+		// Record this plugin's database version in the wp_options table.
+		update_option( 'rabbp_suspension_db_version', $rabbp_suspension_db_version );
+
+
+		// Create a trigger associated with this table to update createDate upon row insertion and lastModified whenever updated.
+		$trigger_name = $table_name . "_create_time_trigger";
+		$trigger_sql = "CREATE TRIGGER $trigger_name 
+			BEFORE UPDATE ON $table_name
+			FOR EACH ROW BEGIN
+				SET NEW.last_modified = now();
+			END
+		";
+		$wpdb->query($trigger_sql);
+
+
 	}
-
 }
+add_action( 'plugins_loaded', 'rabbp_suspension_setup_database_table' );
 
 
-
-/**
- * Update database as necessary depending on database version updates
- */
-function rabbp_suspension_do_update_db_check() {
-    global $rabbp_suspension_db_version;
-    if ( get_site_option( 'rabbp_suspension_db_version' ) != $rabbp_suspension_db_version ) {
-    	rabbp_suspension_setup_database();
-    }
-}
-add_action( 'plugins_loaded', 'rabbp_suspension_do_update_db_check' );
 
 
 
@@ -139,8 +128,8 @@ add_action( 'plugins_loaded', 'rabbp_suspension_do_update_db_check' );
  */
 function rabbp_suspension_on_activation() {
 
-	// Check database is up to date
-	rabbp_suspension_do_update_db_check();
+	// Check/do database updating
+	rabbp_suspension_setup_database_table();
 
 	// If the suspension reactivator is not scheduled, schedule it.
 	if( !wp_next_scheduled( 'rabbp_deactivate_expired_suspensions_hook' ) ) {
