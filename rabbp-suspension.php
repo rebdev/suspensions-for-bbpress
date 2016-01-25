@@ -102,14 +102,15 @@ function is_current_user_suspended() {
 /*
  * Background actions that occur after Suspension is successfully created or edited.
  */
-function rabbp_form_submitted_callback($suspension_id, $data) {
+function rabbp_suspension_success_background_actions($suspension_id, $data) {
+
 	$myHelper = new rabbpSuspensionHelper();
 
 	// If status is complete but roles haven't been changed accordingly, do that now.
 	$status = $data['status'];
-	$roles_data = array('suspension_id'=>$suspension_id,
-						'user_id'=>$data['user_id'],
-						'roles_as_string'=>$data['ordinary_bbp_roles']);
+	$roles_data = array('suspension_id'		=> $suspension_id,
+						'user_id'			=> $data['user_id'],
+						'roles_as_string'	=> $data['ordinary_bbp_roles']);
 
 	// Do the user's roles include 'suspended'?
 	$user = get_user_by('id', $data['user_id']);
@@ -128,6 +129,6 @@ function rabbp_form_submitted_callback($suspension_id, $data) {
 		$myHelper->removeRolesAndSetAsSuspended($suspension_id);
 	}
 }
-add_action('rabbp_suspension_form_submitted', 'rabbp_form_submitted_callback', 10, 2);
+add_action('rabbp_suspension_form_submitted', 'rabbp_suspension_success_background_actions', 10, 2);
 
 ?>

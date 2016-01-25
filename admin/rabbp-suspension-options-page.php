@@ -1,5 +1,8 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) 
+	exit; 
 
 
 /**
@@ -19,19 +22,13 @@ function rabbp_suspension_register_plugin_options() {
 add_action( 'admin_init', 'rabbp_suspension_register_plugin_options' );
 
 
-
 /* 
  * Whitelist options
  */
 function rabbp_suspension_register_my_settings() {
-
 	register_setting( 'rabbp_options_section', 'default_suspend_time' );
 	register_setting( 'rabbp_options_section', 'suspension_message' );
-
 }
-
-
-
 
 
 /**
@@ -39,7 +36,6 @@ function rabbp_suspension_register_my_settings() {
  */
 function rabbp_suspension_options_page() {
 ?>
-
 <div class="wrap">
 
 	<?php echo "<h2>Suspension Options</h2>"; ?>
@@ -81,6 +77,4 @@ function rabbp_suspension_options_page() {
 
 <?php
 }
-
-
 ?>

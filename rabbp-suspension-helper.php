@@ -10,6 +10,8 @@ class RabbpSuspensionHelper {
 	 * Contents:
 	 * Fn calculate_end_date
 	 * Fn delete_suspensions
+	 * Fn expire_suspensions
+	 * Fn check_form_data_for_errors
 	 * Fn get_current_role
 	 * Fn get_expired_suspensions
 	 * Fn prepare_suspension
@@ -110,7 +112,6 @@ class RabbpSuspensionHelper {
 			}
 
 			foreach ( $suspensions as $suspension ) {
-				error_log ( gettype($suspension) );
 
 				// Reapply usual BP roles and cron jobs
 				$role_data = array('suspension_id'		=>$suspension->id, 
@@ -132,7 +133,7 @@ class RabbpSuspensionHelper {
 	 * @returns an array of errors encountered when the Suspension form is submitted.
 	 * @returns an empty array if no errors. Form processing is dependent on this returning an empty array.
 	 */
-	function checkFormDataForErrors( $data ) {
+	function check_form_data_for_errors( $data ) {
 
 		global $wpdb;
 		$errors = Array();
@@ -155,22 +156,65 @@ class RabbpSuspensionHelper {
 	}
 
 
+	function is_suspended( $user_id ) {
+		$myHelper = new RabbpSuspensionHelper();
+		if ( $myHelper->roles_for_user_includes( $user_id, "bbp_suspended" ) ) {
+			return true;
+		}
+		return false;
+	}
+
+
+	function validate_date( $date ) {
+		// check the format is as requested
+		if( !preg_match( '!\d{4}/\d{2}/\d{2} \d{2}:\d{2}!', $date ) ) {
+			return "wrong pattern";
+		}
+		// check date is real and valid
+		$time_as_timestamp = strtotime( $date );	// parse input into a unix timestamp using strtotime to ensure it's a valid date
+		if ( !$time_as_timestamp ) {
+			return "date invalid";
+		}
+		return true;
+	}
+
+
+	/*
+	 * Checks if a user exists with a specified ID
+	 * @params int user_id
+	 * @returns a boolean true or false
+	 */
+	function validate_user_exists( $user_id ) {
+		if ( (!$user_id) || ($user_id == 0) ) {
+			return false;
+		}
+
+		$user = get_userdata( $user_id );
+		if ( $user === false) {
+			error_log("We seem to be getting to here");
+			return false;
+		} else {
+			return true;
+		}
+	}
+
 
 	/*
 	 * Checks whether a role with the name supplied is in the current roles of the user_id supplied
 	 * @params int user_id, string role_name
 	 * @returns boolean true or false according to whether or not the user has the role
 	 */
-	function rolesForUserIncludes( $user_id, $role_name ) {
-		$user = get_user_by('id', $user_id);
-		$users_current_roles = $user->roles;
+	function roles_for_user_includes( $user_id, $role_name ) {
+		if ( $user_id ) {
+			$user = get_user_by('id', $user_id);
+			$users_current_roles = $user->roles;
 
-		foreach($users_current_roles as $role) {
-			if ($role == $role_name) {
-				return true;
-			}
+			foreach($users_current_roles as $role) {
+				if ($role == $role_name) {
+					return true;
+				}
+			}	
 		}
-		// Return false as no match happened in the for loop
 		return false;
 	}
 
@@ -354,7 +398,6 @@ class RabbpSuspensionHelper {
 		// We're going to want to return them to this level of role once their suspension has expired.
 
 		$user_id = $suspension->user_id;
-		error_log("User id is " . $user_id);
 
 		$user = get_user_by('id', $user_id );
 
@@ -367,7 +410,6 @@ class RabbpSuspensionHelper {
 			$roles_to_remove = array();
 
 			foreach($users_current_roles as $role) {
-				error_log("We are working now on the " . $role . " role.");
 				$first_three_letters_of_role = substr($role, 0, 3);
 				if ( $first_three_letters_of_role == "bbp") {
 					array_push( $roles_to_remove, $role );
