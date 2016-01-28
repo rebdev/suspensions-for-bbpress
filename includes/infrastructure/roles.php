@@ -1,41 +1,44 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) 
+    exit; 
 
 
 /* 
  * Intercept the creation of bbPress' dynamic roles and insert our own new 'Suspended' one.
  * Method from here: http://gawainlynch.com/customising-dynamic-roles-in-bbpress-2-2/
  */
-function rabbp_suspension_get_dynamic_roles( $bbp_roles ) {
+function sfbbp_get_dynamic_roles( $bbp_roles ) {
 
   $bbp_roles['bbp_suspended'] = array( 
     'name' => 'Suspended',
-    'capabilities' => rabbp_suspension_get_caps_for_role( 'bbp_suspended' ) // i just want them to have the same capabilities as participants
+    'capabilities' => sfbbp_get_caps_for_role( 'bbp_suspended' ) // We just want them to have the same capabilities as participants
   );
 
   return $bbp_roles;
 }   
-add_filter('bbp_get_dynamic_roles', 'rabbp_suspension_get_dynamic_roles', 1);
+add_filter('bbp_get_dynamic_roles', 'sfbbp_get_dynamic_roles', 1);
 
 
 /*
- * Filter capabilities for new roles and return capabilities.
+ * Filter capabilities for new roles and return capabilities
  */
-function rabbp_suspension_get_caps_for_role_filter($caps, $role) {
+function sfbbp_get_capabilities_for_role_filter( $caps, $role ) {
 
     /* Only filter for roles we are interested in! */
-    if ($role == 'bbp_suspended')
-        $caps = rabbp_suspension_get_caps_for_role($role);
-
+    if ( $role == 'bbp_suspended' ) {
+        $caps = sfbbp_get_caps_for_role( $role );
+    }
     return $caps;
 }
-add_filter('bbp_get_caps_for_role', 'rabbp_suspension_get_caps_for_role_filter', 10, 2);
+add_filter('bbp_get_caps_for_role', 'sfbbp_get_capabilities_for_role_filter', 10, 2);
 
 
 /* 
  * Specify capabilities for Suspended role 
  */
-function rabbp_suspension_get_caps_for_role($role) {
+function sfbbp_get_caps_for_role($role) {
     
     switch ($role) {
         /* Disable viewing of private forums by 'Participants' */

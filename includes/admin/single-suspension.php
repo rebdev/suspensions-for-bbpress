@@ -8,9 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /*
  * Render single (New and Edit) pages: suspension details in a form.
  */
-function rabbp_suspension_render_single_page() {
+function sfbbp_single_suspension() {
 
-	$myHelper = new RabbpSuspensionHelper();
+	$myHelper = new SfbbpHelper();
 
 	global 	$wpdb,
 			$format_date,
@@ -68,7 +68,7 @@ function rabbp_suspension_render_single_page() {
 				}
 
 				// Check user_id isn't already suspended (you shouldn't be able to create a new suspension for someone already suspended)
-				if ( ($clean['suspension_id'] == null) && $myHelper->is_suspended( $clean['user_id'] ) ) {
+				if ( ( $clean['suspension_id'] == null ) && ( $myHelper->is_suspended( $clean['user_id'] ) ) ) {
 					$errors['user_id'] = "<p>User is already suspended. Please either edit their existing suspension or change its status to 'complete' before suspending the user again.</p>";
 				}
 
@@ -145,8 +145,23 @@ function rabbp_suspension_render_single_page() {
 
 
 		// Sanitize ordinary_bbp_roles, a hidden field populated when the admin has picked a user to suspend from the dropdown.
+		// 
 		if ( isset( $_POST['ordinary_bbp_roles'] ) ) {
-			$clean['ordinary_bbp_roles'] = sanitize_text_field( $_POST['ordinary_bbp_roles'] );
+			// Sanitize first
+			$sanitized = sanitize_text_field( $_POST['ordinary_bbp_roles'] );
+
+			// Ensure what we're saving is actual roles that exist in the system. And that they belong to the user
+			// in question. If they don't....?  Suggest the
+			// user fix the user's roles up before proceeding with the suspension as we can't save some of the roles
+			// coming back for this user as they're not recognised as system roles.
+				
+				//$roles_data_as_array = $roles_data.split(",");
+				//if ( $.inArray("bbp_suspended", $roles_data_as_array) < 0 ) {
+				//	$("#ordinary_bbp_roles").val( $roles_data );
+				//}
+
+
+			$clean['ordinary_bbp_roles'] = $sanitized;
 		} else {
 			$clean['ordinary_bbp_roles'] = "";
 		}
@@ -199,7 +214,7 @@ function rabbp_suspension_render_single_page() {
 					
 				// First of all, check if user is already suspended and add an error message if so, because you shouldn't be able to suspend someone twice.
 				
-				$myHelper = new RabbpSuspensionHelper();
+				$myHelper = new SfbbpHelper();
 
 				if ( $clean['user_id']) { // Since if no user ID is entered there's no way we can check their roles
 					if ( $myHelper->roles_for_user_includes( $data['user_id'], "bbp_suspended" ) ) {

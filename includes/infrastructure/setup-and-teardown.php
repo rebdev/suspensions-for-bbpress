@@ -4,11 +4,6 @@
 if ( ! defined( 'ABSPATH' ) ) 
 	exit;
 
-/*
- * Suspensions For bbPress
- * sfbbp_
- *
- */
 
 /*
  * Some globals for use in the functions in this file
@@ -17,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) )
 $path = plugin_dir_path( __FILE__ );
 
 
-global $wpdb,
+global 	$wpdb,
 		$table_name, 					// Table name for plugin data.
 		$installed_ver;					// Database version already installed by previous versions of this plugin.
 		$rabbp_suspension_db_version; 	// New (if any) db version # option. Lets us work out if the db 
@@ -29,41 +24,46 @@ $rabbp_suspension_db_version = '1.7';
 
 
 /**
- * Do teardown stuff on plugin removal
+ * Checks database is up-to-date and schedules the wp-cron event on plugin re/activation
  */
-register_uninstall_hook( __FILE__, 'rabbp_suspension_on_uninstall');
-function rabbp_suspension_on_uninstall() {
-	// Restore all user privileges
-	rabbp_deactivate_expired_suspensions();
+function sfbbp_do_on_activation() {
 
-	// Drop table entirely
-	global 	$wpdb,
-			$table_name;
+	// Check/do database updating
+	sfbbp_set_up_database_table();
 
-	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-	$sql = "DROP TABLE $table_name";
+	// If the suspension reactivation hook is not scheduled to run daily already (unsuspending any
+	//  users whose suspensions have expired), schedule it.
+	if( !wp_next_scheduled( 'sfbbp_deactivate_expired_suspensions_hook' ) ) {
+		wp_schedule_event( time(), 'daily', 'sfbbp_deactivate_expired_suspensions_hook' );
+	}
 
-	$wpdb->query($sql);
 }
+register_activation_hook( __FILE__ , 'sfbbp_do_on_activation');
 
 
 
 /**
  * Pauses the wp-cron job when plugin is deactivated
  */
-function rabbp_suspension_on_deactivation() {
-	// Deschedule the suspension activator.
-	if( false !== ( $time = wp_next_scheduled( 'rabbp_deactivate_expired_suspensions_hook' ) ) ) {
-   		wp_unschedule_event( $time, 'rabbp_deactivate_expired_suspensions_hook' );
+function sfbbp_do_on_deactivation() {
+
+	// Deschedule the suspension activator
+	if( false !== ( $time = wp_next_scheduled( 'sfbbp_deactivate_expired_suspensions_hook' ) ) ) {
+   		wp_unschedule_event( $time, 'sfbbp_deactivate_expired_suspensions_hook' );
 	}
+
 }
-register_deactivation_hook( __FILE__, 'rabbp_suspension_on_deactivation');
+register_deactivation_hook( __FILE__, 'sfbbp_do_on_deactivation');
+
+
+
 
 
 /**
- * Sets up database
+ * Sets up database. Used by sfbbp_do_on_activation when plugin is activated, and also runs whenever
+ *  plugin is loaded, the latter to check table is up-to-date in case of changes in plugin updates.
  */
-function rabbp_suspension_setup_database_table() {
+function sfbbp_set_up_database_table() {
 
 	global 	$wpdb,
 			$rabbp_suspension_db_version,
@@ -108,49 +108,11 @@ function rabbp_suspension_setup_database_table() {
 				SET NEW.last_modified = now();
 			END
 		";
-		$wpdb->query($trigger_sql);
+		$wpdb->query( $trigger_sql );
 	}
 }
-add_action( 'plugins_loaded', 'rabbp_suspension_setup_database_table' );
+add_action( 'plugins_loaded', 'sfbbp_set_up_database_table' );
 
-
-/**
- * Checks database is up-to-date and schedules the wp-cron event on plugin re/activation.
- */
-function rabbp_suspension_on_activation() {
-
-	// Check/do database updating
-	rabbp_suspension_setup_database_table();
-
-	// If the suspension reactivator is not scheduled, schedule it.
-	if( !wp_next_scheduled( 'rabbp_deactivate_expired_suspensions_hook' ) ) {
-		wp_schedule_event( time(), 'daily', 'rabbp_deactivate_expired_suspensions_hook' );
-	}
-}
-register_activation_hook( __FILE__ , 'rabbp_suspension_on_activation');
-
-
-
-/**
- * Adds nav items to admin menu.
- */
-function rabbp_suspension_add_menu_items() {
-
-	// Add top level menu page. 
-	// Usage: add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $function, $icon_url, $position );
-	add_menu_page( 'Suspensions', 'Suspensions', 'manage_options', 'suspensions', 'rabbp_suspension_render_list_page', '', 6.3 );
-
-	// Add submenu items. 
-	// Usage: add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug, $function );
-	add_submenu_page( 'suspensions', 'Suspension', 'Add New', 'manage_options', 'suspension', 'rabbp_suspension_render_single_page' );
-
-	// Add submenu items. 
-	// Usage: add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug, $function );
-	add_submenu_page( 'suspensions', 'Suspension Options', 'Options', 'manage_options', 'suspension-options', 'rabbp_suspension_options_page' );
-}
-if ( is_admin() ){
-	add_action('admin_menu','rabbp_suspension_add_menu_items');
-}
 
 
 

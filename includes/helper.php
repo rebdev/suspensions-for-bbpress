@@ -1,27 +1,11 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) 
+	exit; 
 
 
-
-class RabbpSuspensionHelper {
-
-	/**
-	 * Contents:
-	 * Fn calculate_end_date
-	 * Fn delete_suspensions
-	 * Fn expire_suspensions
-	 * Fn check_form_data_for_errors
-	 * Fn get_current_role
-	 * Fn get_expired_suspensions
-	 * Fn prepare_suspension
-	 * Fn reinstituteUsualRoles // TODO: Change camelcase function names across all files
-	 * Fn removeRolesAndSetAsSuspended
-	 * Fn setSuspensionStatus
-	 */
-
-
-
+class SfbbpHelper {
 
 	/**
 	 * Calculates and returns an end date given a start date and a length (in days)
@@ -29,9 +13,13 @@ class RabbpSuspensionHelper {
 	function calculate_end_date( $start, $length ) {
 		global $format_string;
 		$format_string = 'Y/m/d h:i';
+
+		// Calculate
 		$calculated_end_date = new DateTime( $start );
 		date_add( $calculated_end_date, date_interval_create_from_date_string($length . " days") );
-		$suspended_until = $calculated_end_date->format($format_string);
+		
+		// Format
+		$suspended_until = $calculated_end_date->format( $format_string );
 
 		return $suspended_until;
 	}
@@ -46,7 +34,7 @@ class RabbpSuspensionHelper {
 
 		error_log("Selected_suspensions var is: " . $selected_suspensions);
 
-		$myHelper = new RabbpSuspensionHelper();
+		$myHelper = new SfbbpHelper();
 		$result = $myHelper->prepare_suspension( $selected_suspensions );
 
 		if ( $result ) {
@@ -64,11 +52,11 @@ class RabbpSuspensionHelper {
 
 			foreach ( $suspensions as $suspension ) {
 
-				// Reapply usual BP roles
-				$role_data = array('suspension_id'		=>$suspension->id, 
-									'user_id'			=>$suspension->user_id, 
-									'roles_as_string'	=>$suspension->ordinary_bbp_roles);
-				$myHelper->reinstituteUsualRoles( $role_data );
+				// Reinstitute usual BP roles
+				$role_data = array('suspension_id'		=> $suspension->id, 
+									'user_id'			=> $suspension->user_id, 
+									'roles_as_string'	=> $suspension->ordinary_bbp_roles);
+				$myHelper->reinstitute_usual_roles( $role_data );
 
 		   	}
 
@@ -95,31 +83,30 @@ class RabbpSuspensionHelper {
 	 */
 	function expire_suspensions( $selected_suspensions ) {
 
-		$myHelper = new RabbpSuspensionHelper();
+		$myHelper = new SfbbpHelper();
 		$result = $myHelper->prepare_suspension( $selected_suspensions );
 
 		if ( $result ) {
 
 			// If prepare_suspensions only returned a single result, it will be an object rather than an array.
 			// This is what the original function (not written by me) did, and what some stuff in the list page code may 
-			// rely on so I'm leaving it working that way if a single result only is returned.
-			// For this function, it's easier to have it in an array for consistency of processing. Ergo:
+			// there rely on, so I'm leaving it working that way if a single result only is returned.
+			// For this function, however, it's easier to have the results in an array whether it's single or multiple
+			// for consistency of processing. Ergo we put any single result into an array before we proceed:
 			$suspensions = array();
-			if ( is_array($result) ) {
+			if ( is_array( $result ) ) {
 				$suspensions = $result;
 			} else {
 				$suspensions[0] = $result;
 			}
 
 			foreach ( $suspensions as $suspension ) {
-
-				// Reapply usual BP roles and cron jobs
-				$role_data = array('suspension_id'		=>$suspension->id, 
-									'user_id'			=>$suspension->user_id, 
-									'roles_as_string'	=>$suspension->ordinary_bbp_roles);
-				$myHelper->reinstituteUsualRoles( $role_data );
-
-				$myHelper->setSuspensionStatus( $suspension->id, "COMPLETE" );	
+				// Mark suspensions as complete and reapply usual bbPress roles
+				$role_data = array('suspension_id'		=> $suspension->id, 
+									'user_id'			=> $suspension->user_id, 
+									'roles_as_string'	=> $suspension->ordinary_bbp_roles);
+				$myHelper->reinstitute_usual_roles( $role_data );
+				$myHelper->set_suspension_status( $suspension->id, "COMPLETE" );	
 		   	}
 
 		}
@@ -157,7 +144,7 @@ class RabbpSuspensionHelper {
 
 
 	function is_suspended( $user_id ) {
-		$myHelper = new RabbpSuspensionHelper();
+		$myHelper = new SfbbpHelper();
 		if ( $myHelper->roles_for_user_includes( $user_id, "bbp_suspended" ) ) {
 			return true;
 		}
@@ -346,7 +333,7 @@ class RabbpSuspensionHelper {
 	 * 2. user_id: an int
 	 * 3. roles_as_string: an array or a serialized set of roles to remove
 	 */
-	function reinstituteUsualRoles($roles_data) {
+	function reinstitute_usual_roles($roles_data) {
 
 		$suspension_id = $roles_data['suspension_id'];
 		$user_id = $roles_data['user_id'];
@@ -391,7 +378,7 @@ class RabbpSuspensionHelper {
 
 		//error_log("suspension_id is of type: " . typeof($suspension_id) );
 		// Query the database via for the relevant suspension.
-		$myHelper = new RabbpSuspensionHelper();
+		$myHelper = new SfbbpHelper();
 		$suspension = $myHelper->prepare_suspension($suspension_id);
 
 		//error_log("suspension is of type: " . typeof($suspension));
@@ -442,10 +429,10 @@ class RabbpSuspensionHelper {
 
 
 	/*
-	* Sets the status of a given Suspension to the string supplied. 
-	* Requires a suspension_id (int), and a status (string).
-	*/
-	function setSuspensionStatus($suspension_id, $new_status) {
+	 * Sets the status of a given Suspension to the string supplied. 
+	 *  Requires a suspension_id (int), and a status (string).
+	 */
+	function set_suspension_status( $suspension_id, $new_status ) {
 
 		// Save the data to the db before showing the page and its feedback
 		global $wpdb;
