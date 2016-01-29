@@ -32,8 +32,6 @@ class SfbbpHelper {
 	 */
 	function delete_suspensions( $selected_suspensions ) {
 
-		error_log("Selected_suspensions var is: " . $selected_suspensions);
-
 		$myHelper = new SfbbpHelper();
 		$result = $myHelper->prepare_suspension( $selected_suspensions );
 
@@ -51,13 +49,8 @@ class SfbbpHelper {
 			}
 
 			foreach ( $suspensions as $suspension ) {
-
 				// Reinstitute usual BP roles
-				$role_data = array('suspension_id'		=> $suspension->id, 
-									'user_id'			=> $suspension->user_id, 
-									'roles_as_string'	=> $suspension->ordinary_bbp_roles);
-				$myHelper->reinstitute_usual_roles( $role_data );
-
+				$myHelper->reinstitute_usual_roles( $suspension->id );
 		   	}
 
 			// Delete the Suspensions' records as per user's request.
@@ -102,18 +95,13 @@ class SfbbpHelper {
 
 			foreach ( $suspensions as $suspension ) {
 				// Mark suspensions as complete and reapply usual bbPress roles
-				$role_data = array('suspension_id'		=> $suspension->id, 
-									'user_id'			=> $suspension->user_id, 
-									'roles_as_string'	=> $suspension->ordinary_bbp_roles);
-				$myHelper->reinstitute_usual_roles( $role_data );
+				$myHelper->reinstitute_usual_roles( $suspension->id );
 				$myHelper->set_suspension_status( $suspension->id, "COMPLETE" );	
 		   	}
 
 		}
 
 	}
-
-
 
 
 	/*
@@ -143,6 +131,39 @@ class SfbbpHelper {
 	}
 
 
+	/*
+	 * Gets the display name for a user_id
+	 */
+    function get_displayname_from_userid( $user_id ) {
+        $user = get_userdata( $user_id );
+        return $user->display_name; 
+    }
+
+
+	/*
+	 * In the lack of an easily-discernable alternative, produces a humanized version of the rolename from a supplied
+	 * bbPress rolecode by performing the amazing feat of... just lopping off the "bbp_" at the beginning.
+	 * @param string role
+	 * @returns string role
+	 */
+    function make_humanized_rolename_from_bbp_rolecode( $role ) {
+		$first_four_letters_of_role = substr( $role, 0, 4 );
+		if ( $first_four_letters_of_role == "bbp_") {
+			// Chop it off!
+			$chopped = substr( $role, 4 );
+			$chopped_capitalized = ucfirst( $chopped );
+			return $chopped_capitalized;
+		} else {
+			return $role;
+		}
+    }
+
+
+	/*
+	 * Checks if a user is suspended (ie has the bbp_suspended forum role)
+	 * @params int user_id
+	 * @returns a boolean true or false
+	 */
 	function is_suspended( $user_id ) {
 		$myHelper = new SfbbpHelper();
 		if ( $myHelper->roles_for_user_includes( $user_id, "bbp_suspended" ) ) {
@@ -152,6 +173,11 @@ class SfbbpHelper {
 	}
 
 
+	/*
+	 * Checks a date is real and in the format required
+	 * @params string date
+	 * @returns a boolean true if all expectations are met
+	 */
 	function validate_date( $date ) {
 		// check the format is as requested
 		if( !preg_match( '!\d{4}/\d{2}/\d{2} \d{2}:\d{2}!', $date ) ) {
@@ -178,7 +204,6 @@ class SfbbpHelper {
 
 		$user = get_userdata( $user_id );
 		if ( $user === false) {
-			error_log("We seem to be getting to here");
 			return false;
 		} else {
 			return true;
@@ -206,12 +231,10 @@ class SfbbpHelper {
 	}
 
 
-
-
 	/* 
 	 * Generates the string that will dynamically populate the ordinary_bbp_roles field
 	 */
-	function getCurrentRoles($user_id) {
+	function get_current_roles( $user_id ) {
 		
 		$user = get_user_by('id', $user_id);
 
@@ -229,8 +252,6 @@ class SfbbpHelper {
 		$current_bbp_roles_as_string = implode(",", $current_bbp_roles );	
 		return $current_bbp_roles_as_string;
 	}
-
-
 
 
 
@@ -299,7 +320,6 @@ class SfbbpHelper {
 		$unsignedDecimalPlaceholders = array_fill(0, $ids_count, '%u'); // %u = unsigned decimal number
 		// Put all the placeholders in one string '%u, %u, %u, %u, %u,…'
 		$placeholders_for_ids = implode(',', $unsignedDecimalPlaceholders);
-		//error_log("The placeholders_for_ids var is: " . $placeholders_for_ids);
 
 		// Our query	
 		$query = "SELECT * FROM $table_name WHERE id IN ($placeholders_for_ids)";
@@ -310,50 +330,36 @@ class SfbbpHelper {
 			$data = $data[0];
 		}
 		return $data;
-
-
-		/*
-		error_log( "Suspension ID is of type: " . gettype( $suspension_id ) );
-		global $wpdb;
-		$table_name = $wpdb->prefix . "suspensions";
-		$sql = sprintf("SELECT * FROM %s WHERE id=%s", mysql_real_escape_string($table_name), mysql_real_escape_string($suspension_id) );
-		$data = $wpdb->get_row($sql, OBJECT );
-		*/
-
-
 	}
 
 
 
 
-	/*
-	 * Removes suspended role and adds back a user role. 
-	 * @param Array containing 3 things:
-	 * 1. suspension_id: an int 
-	 * 2. user_id: an int
-	 * 3. roles_as_string: an array or a serialized set of roles to remove
+	/* 
+	 * Removes suspended role and adds back a user role
 	 */
-	function reinstitute_usual_roles($roles_data) {
+	function reinstitute_usual_roles( $suspension_id ) {
 
-		$suspension_id = $roles_data['suspension_id'];
-		$user_id = $roles_data['user_id'];
-		$roles_that_were_removed_as_string = $roles_data['roles_as_string'];
+		$myHelper = new SfbbpHelper();
+		$suspension = $myHelper->prepare_suspension( $suspension_id );
+
+		$user_id = $suspension->user_id;
+		$roles_that_were_removed_as_string = $suspension->ordinary_bbp_roles;
 
 		// Get WP_User object, remove the suspended role and give them back their old roles.
-
 		$user = get_user_by('id', $user_id );
 
-		$roles_that_were_removed = explode(",", $roles_that_were_removed_as_string);
+		$roles_that_were_removed = explode( ",", $roles_that_were_removed_as_string );
 
 		if ( $user ) {
 
-			// Re-add any Buddypress roles we took off the user when suspending them.
-			if ($roles_that_were_removed) {
-				foreach($roles_that_were_removed as $role) {
-					$user->add_role($role);
+			// Re-add any bbPress roles we took off the user when suspending them.
+			if ( $roles_that_were_removed ) {
+				foreach( $roles_that_were_removed as $role ) {
+					$user->add_role( $role );
 				}
 			} else {
-				error_log("No roles to add back.");
+				//error_log("No roles to add back.");
 			}
 
 			// Remove the 'Suspended' role.
@@ -362,11 +368,8 @@ class SfbbpHelper {
 			return true;
 
 		} else {
-			error_log("Un oh, no user was found by that user ID.");
 			return false;
-
 		}
-
 	}
 
 
@@ -374,31 +377,29 @@ class SfbbpHelper {
 	 * Removes roles based on the user_id and expiry date a suspension ID passed in.
 	 * Happens when a suspension is added or updated successfully.
 	 */
-	function removeRolesAndSetAsSuspended( $suspension_id ) {
+	function remove_roles_and_set_as_suspended( $suspension_id ) {
 
-		//error_log("suspension_id is of type: " . typeof($suspension_id) );
 		// Query the database via for the relevant suspension.
 		$myHelper = new SfbbpHelper();
-		$suspension = $myHelper->prepare_suspension($suspension_id);
+		$suspension = $myHelper->prepare_suspension( $suspension_id );
 
-		//error_log("suspension is of type: " . typeof($suspension));
 		// We're going to want to return them to this level of role once their suspension has expired.
 
 		$user_id = $suspension->user_id;
 
 		$user = get_user_by('id', $user_id );
 
-		if ($user) {
-			// Remove any Buddypress roles so user can't post comments or forum posts while the suspension lasts.
-			// We're only interested in saving the Buddypress roles for retrieval later. Any other membership status should remain the same
+		if ( $user ) {
+			// Remove any bbPress roles so user can't post comments or forum posts while the suspension lasts.
+			// We're only interested in saving the bbPress roles for retrieval later. Any other membership status should remain the same
 
 			$users_current_roles = $user->roles;
 
 			$roles_to_remove = array();
 
-			foreach($users_current_roles as $role) {
+			foreach( $users_current_roles as $role ) {
 				$first_three_letters_of_role = substr($role, 0, 3);
-				if ( $first_three_letters_of_role == "bbp") {
+				if ( $first_three_letters_of_role == "bbp" ) {
 					array_push( $roles_to_remove, $role );
 				}
 			}
@@ -408,9 +409,9 @@ class SfbbpHelper {
 			$args = array( $suspension_id, $user_id, $roles_to_remove_serialized );
 
 
-			// Switch the user's role from their old one(s) to the 'Suspended' role and save their old role to the cron job 
+			// Switch the user's role from their old one(s) to the 'Suspended' role and save their old role 
 			// so it can be reinstituted later.
-			foreach($roles_to_remove as $role) {
+			foreach( $roles_to_remove as $role ) {
 				$user->remove_role($role);
 			}
 			// Apply the 'Suspended' role.

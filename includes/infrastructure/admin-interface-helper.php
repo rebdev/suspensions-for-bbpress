@@ -117,7 +117,7 @@ function sfbbp_user_lookup_javascript() { ?>
 				$("#user_id").val( $(this).data("id") );
 				
 				// Process the data-roles and update if it's not bbp_suspended
-				sfbbp_update_roles_field_if_appropriate( $(this).data("roles") );
+				//sfbbp_update_roles_field_if_appropriate( $(this).data("roles") );
 
 				// Finished with the results ul now
 				$("ul#user_field_results").remove();
@@ -131,12 +131,12 @@ function sfbbp_user_lookup_javascript() { ?>
 			// currently applied to them, then we want to try and save their current role/s; therefore add the 
 			// contents to the ordinary_bbp_roles field. Content will be validated when form is submitted to ensure
 			// content entered here are actual roles in the system.
-			function sfbbp_update_roles_field_if_appropriate( $roles_data ) {
-				$roles_data_as_array = $roles_data.split(",");
-				if ( $.inArray("bbp_suspended", $roles_data_as_array) < 0 ) {
-					$("#ordinary_bbp_roles").val( $roles_data );
-				}
-			}
+			//function sfbbp_update_roles_field_if_appropriate( $roles_data ) {
+			//	$roles_data_as_array = $roles_data.split(",");
+			//	if ( $.inArray("bbp_suspended", $roles_data_as_array) < 0 ) {
+			//		$("#ordinary_bbp_roles").val( $roles_data );
+			//	}
+			//}
 		});
 	</script> <?php
 }
@@ -169,8 +169,9 @@ function sfbbp_user_lookup() {
 
 		$user = get_userdata( $userid );
 
-		$myHelper = new SfbbpHelper();
-		$roles = $myHelper->getCurrentRoles( $userid );
+		//$myHelper = new SfbbpHelper();
+		//$roles = $myHelper->get_current_roles( $userid );
+		$roles = "";
 		
 		$return_markup .= '<li><a data-roles="' . $roles . '" href="noclick" class="user_lookup_option" data-id="' . $user->ID . '">' . $user->user_nicename . '</a></li>';
 	}

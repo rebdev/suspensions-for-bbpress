@@ -67,11 +67,6 @@ function sfbbp_single_suspension() {
 						You may need to turn JavaScript on in your browser if it isn't already.</p>";
 				}
 
-				// Check user_id isn't already suspended (you shouldn't be able to create a new suspension for someone already suspended)
-				if ( ( $clean['suspension_id'] == null ) && ( $myHelper->is_suspended( $clean['user_id'] ) ) ) {
-					$errors['user_id'] = "<p>User is already suspended. Please either edit their existing suspension or change its status to 'complete' before suspending the user again.</p>";
-				}
-
 			} else {
 
 				// Something was wrong with ID, even though some attempt was made at entering a username
@@ -144,27 +139,33 @@ function sfbbp_single_suspension() {
 
 
 
-		// Sanitize ordinary_bbp_roles, a hidden field populated when the admin has picked a user to suspend from the dropdown.
-		// 
-		if ( isset( $_POST['ordinary_bbp_roles'] ) ) {
-			// Sanitize first
-			$sanitized = sanitize_text_field( $_POST['ordinary_bbp_roles'] );
+		// Use the user_id to grab the user's current bbp role/s so we can save them before suspending them. 
+		// These will be used later to reinstate their role when the suspension period has ended.
+		if ( empty( $errors['user_id'] ) ) {
 
-			// Ensure what we're saving is actual roles that exist in the system. And that they belong to the user
-			// in question. If they don't....?  Suggest the
-			// user fix the user's roles up before proceeding with the suspension as we can't save some of the roles
-			// coming back for this user as they're not recognised as system roles.
-				
-				//$roles_data_as_array = $roles_data.split(",");
-				//if ( $.inArray("bbp_suspended", $roles_data_as_array) < 0 ) {
-				//	$("#ordinary_bbp_roles").val( $roles_data );
-				//}
+			$myHelper = new SfbbpHelper();
 
+			if ( !$clean['suspension_id'] || $clean['suspension_id'] == null ) {
+				// There's no suspension ID, which means we're creating a new suspension and want to check if the user is
+				//  currently suspended in order to work out what to save in the ordinary_bbp_roles cell
+				if ( $myHelper->is_suspended( $clean['user_id'] ) ) {
+					$clean['ordinary_bbp_roles'] = ''; // we won't be using this, errors are being generated
+					$errors['ordinary_bbp_roles'] = "<p>User is already suspended. Please either edit their existing suspension or change its status to 'complete' before suspending the user again.</p>";
+				} else {
+					// Prep a string containing their current roles in order for saving.
+					$roles = $myHelper->get_current_roles( $clean['user_id'] );
+					$clean['ordinary_bbp_roles'] = esc_attr( $roles );
+				}
 
-			$clean['ordinary_bbp_roles'] = $sanitized;
-		} else {
-			$clean['ordinary_bbp_roles'] = "";
-		}
+			} else {
+
+				// We have a suspension ID, so we don't want to change what's in the ordinary_bbp_roles field at all.
+				// Just include in it what was in there already. (The $data array below is expecting it and will print a notice otherwise.)
+				$suspension = $myHelper->prepare_suspension( $clean['suspension_id'] );
+				$roles = $suspension->ordinary_bbp_roles;
+				$clean['ordinary_bbp_roles'] = esc_attr( $roles );
+			}
+		} 
 		
 
 		// Prepare data for saving
@@ -208,8 +209,8 @@ function sfbbp_single_suspension() {
 		if ( count( $errors ) == 0 ) {
 			// If we're working on a new suspension
 			if ( empty( $clean['suspension_id'] )  
-				|| ( !empty($clean['suspension_id']) && ($clean['suspension_id'] == null) )
-				|| ( !empty($clean['suspension_id']) && ($clean['suspension_id'] == 0) ) 
+				|| ( !empty( $clean['suspension_id'] ) && ( $clean['suspension_id'] == null ) )
+				|| ( !empty( $clean['suspension_id'] ) && ( $clean['suspension_id'] == 0 ) ) 
 				) {
 					
 				// First of all, check if user is already suspended and add an error message if so, because you shouldn't be able to suspend someone twice.
@@ -237,7 +238,7 @@ function sfbbp_single_suspension() {
 
 					$new_suspension_id = intval( $wpdb->insert_id );
 
-					do_action('rabbp_suspension_form_submitted', $new_suspension_id, $data );	
+					do_action('sfbbp_suspension_form_submitted', $new_suspension_id, $data );	
 
 					$message = "<div id=\"message\" class=\"updated below-h2\">
 									<p>Suspension created.</p>
@@ -254,7 +255,7 @@ function sfbbp_single_suspension() {
 								. "</div>";
 				} else {
 
-					do_action('rabbp_suspension_form_submitted', $clean['suspension_id'], $data );	
+					do_action('sfbbp_suspension_form_submitted', $clean['suspension_id'], $data );	
 				
 					$message = "<div id=\"message\" class=\"updated below-h2\">
 									<p>Suspension updated.</p>

@@ -99,7 +99,11 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
      * @return string Text to be placed inside the column <td> (movie title only)
      **************************************************************************/
 
-    function column_name($item){
+
+    /*
+     * Builds contents for Name/Username cells
+     */
+    function column_name( $item ) {
 
         //Build row actions
         $actions = array(
@@ -107,23 +111,31 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
             'delete'    => sprintf('<a href="?page=suspensions&action=%s&suspension=%s">Delete</a>','delete',$item->id),
         );
         
-        //Return the name contents
-        return sprintf('%1$s <span style="color:silver">(user_id:%2$s)</span>%3$s',
-            /*$1%s*/ $item->name,
-            /*$2%s*/ $item->user_id,
-            /*$3%s*/ $this->row_actions($actions)
+        //Return the name contents        
+        $myHelper = new SfbbpHelper();
+        return sprintf('%1$s <span style="color:silver">(%2$s)</span>%3$s',
+            /*$1%s*/ $myHelper->get_displayname_from_userid( $item->user_id ),
+            /*$2%s*/ $item->name,
+            /*$3%s*/ $this->row_actions( $actions )
         );
 
     }
 
-    function column_ordinary_bbp_roles($item){
+
+    /*
+     * Builds contents for Role cells
+     */
+    function column_ordinary_bbp_roles( $item ) {
+        
+        $myHelper = new SfbbpHelper();
 
         //Return the user's forum roles (the ones they have when not suspended), formatted
         $roles_arr = explode(",", $item->ordinary_bbp_roles);
         if ( sizeof( $roles_arr ) > 0 ) {
             $return_str = "";
-            foreach($roles_arr as $role) {
-               $return_str .= $role;         
+            foreach( $roles_arr as $role ) {
+                $role = $myHelper->make_humanized_rolename_from_bbp_rolecode( $role );
+                $return_str .= $role;         
             }
         } else {
             $return_str = "No usual role saved";
@@ -194,13 +206,13 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
     function get_columns(){
 
         $columns = array(
-            'cb'                    => '<input type="checkbox" />', //Render a checkbox instead of text
-            'name'                  => 'Name',
-            'ordinary_bbp_roles'    => 'Usual Forum Role',
+            'cb'                            => '<input type="checkbox" />', //Render a checkbox instead of text
+            'name'                          => 'Name',
+            'ordinary_bbp_roles'            => 'Usual Forum Role',
             'length_of_suspension_in_days'  => 'Days Suspended',    
-            'status'                => 'Suspension Status',      
-            'time'                  => 'Start',
-            'suspended_until'       => 'End'
+            'status'                        => 'Suspension Status',      
+            'time'                          => 'Start',
+            'suspended_until'               => 'End'
             //'reason'    => 'Reason for Suspension'           
         );
         return $columns;
@@ -225,16 +237,15 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
     function get_sortable_columns() {
 
         $sortable_columns = array(
-            'time'              => array('time', false),                //true means it's already sorted
-            'suspended_until'    => array('suspended_until',false),
-            'name'               => array('name', false),
-            'status'            => array('status',false)
+            'time'                  => array('time', false),                //true means it's already sorted
+            'suspended_until'       => array('suspended_until',false),
+            'name'                  => array('name', false),
+            'status'                => array('status',false)
         );
 
         return $sortable_columns;
 
     }
-
 
     /** ************************************************************************
      * Optional. If you need to include bulk actions in your list table, this is
@@ -284,12 +295,12 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
         // Detect when a bulk action is being triggered and call appropriate function
 
         if( 'delete'===$this->current_action() ) {
-            $myHelper = new RabbpSuspensionHelper();
+            $myHelper = new SfbbpHelper();
             $myHelper->delete_suspensions( $selection_string );
         }
 
         if( 'expire'===$this->current_action() ) {
-            $myHelper = new RabbpSuspensionHelper();
+            $myHelper = new SfbbpHelper();
             $myHelper->expire_suspensions( $selection_string );
         }
         
@@ -338,7 +349,7 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
          * 3 other arrays. One for all columns, one for hidden columns, and one
          * for sortable columns.
          */
-        $this->_column_headers = array($columns, $hidden, $sortable);
+        $this->_column_headers = array( $columns, $hidden, $sortable );
         
         
         /**
@@ -379,7 +390,7 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
          * without filtering. We'll need this later, so you should always include it 
          * in your own package classes.
          */
-        $total_items = count($data);
+        $total_items = count( $data );
         
         
         /**
@@ -387,7 +398,7 @@ class Rabbp_Suspensions_List_Table extends WP_List_Table {
          * to ensure that the data is trimmed to only the current page. We can use
          * array_slice() to 
          */
-        $data = array_slice($data,(($current_page-1)*$per_page),$per_page);
+        $data = array_slice( $data, ( ($current_page-1)*$per_page), $per_page );
         
         
         

@@ -43,7 +43,7 @@ function sfbbp_deactivate_expired_suspensions() {
 							);
 
 		// Mark suspension status as 'complete' if reinstitute_usual_roles is successful
-		if ( $myHelper->reinstitute_usual_roles( $roles_data ) == true ) {
+		if ( $myHelper->reinstitute_usual_roles( $suspension->id ) == true ) {
 			$myHelper->set_suspension_status( $suspension->id, "COMPLETE" );
 		}
 	}
@@ -57,7 +57,7 @@ add_action('sfbbp_deactivate_expired_suspensions_hook', 'sfbbp_deactivate_expire
  */
 function sfbbp_frontend_message() {
 
-	if ( is_current_user_suspended() ) {
+	if ( sfbbp_is_current_user_suspended() ) {
 
 		// Get message for display to user
 		$message = get_option( 'suspension_message' );
@@ -81,7 +81,7 @@ add_action( 'wp_enqueue_scripts', 'sfbbp_frontend_message' );
 /*
  * Returns true if current user has a suspended role on the forum
  */
-function is_current_user_suspended() {
+function sfbbp_is_current_user_suspended() {
 
 	if ( is_user_logged_in() ) {
 		$current_user = wp_get_current_user();
@@ -99,7 +99,7 @@ function is_current_user_suspended() {
 /*
  * Background actions that occur after Suspension is successfully created or edited.
  */
-function rabbp_suspension_success_background_actions($suspension_id, $data) {
+function sfbbp_suspension_success_background_actions($suspension_id, $data) {
 
 	$myHelper = new SfbbpHelper();
 
@@ -112,7 +112,7 @@ function rabbp_suspension_success_background_actions($suspension_id, $data) {
 	// Do the user's roles include 'suspended'?
 	$user = get_user_by('id', $data['user_id']);
 	$users_current_roles = $user->roles;
-	if ( in_array("bbp_suspended", $users_current_roles ) ) {
+	if ( in_array( "bbp_suspended", $users_current_roles ) ) {
 		$user_is_bbp_suspended = true;
 	} else {
 		$user_is_bbp_suspended = false;
@@ -120,12 +120,12 @@ function rabbp_suspension_success_background_actions($suspension_id, $data) {
 
 	// Perform role removals and reinstatements if suspension status requires it
 	if ( $status=="COMPLETE" && $user_is_bbp_suspended==true) {
-		$myHelper->reinstitute_usual_roles( $roles_data );
+		$myHelper->reinstitute_usual_roles( $suspension_id );
 	}
 	if ( $status=="ACTIVE" && $user_is_bbp_suspended==false) {
-		$myHelper->removeRolesAndSetAsSuspended($suspension_id);
+		$myHelper->remove_roles_and_set_as_suspended( $suspension_id );
 	}
 }
-add_action('rabbp_suspension_form_submitted', 'rabbp_suspension_success_background_actions', 10, 2);
+add_action('sfbbp_suspension_form_submitted', 'sfbbp_suspension_success_background_actions', 10, 2);
 
 ?>
